@@ -64,8 +64,8 @@ typedef enum SceJpegEncArmErrorCode {
  * Pixel Formats
  */
 typedef enum SceJpegArmEncoderPixelFormat {
-	SCE_JPEGENCARM_PIXELFORMAT_YCBCR420       = 8,  //!< YCbCr420 format
-	SCE_JPEGENCARM_PIXELFORMAT_YCBCR422       = 9   //!< YCbCr422 format
+	SCE_JPEGENCARM_PIXELFORMAT_YCBCR420 = 8, //!< YCbCr420 format
+	SCE_JPEGENCARM_PIXELFORMAT_YCBCR422 = 9	 //!< YCbCr422 format
 } SceJpegArmEncoderPixelFormat;
 
 /**
@@ -75,6 +75,11 @@ typedef enum SceJpegArmEncoderHeaderMode {
 	SCE_JPEGENCARM_HEADER_MODE_JPEG  = 0,  //!< JPEG header mode
 	SCE_JPEGENCARM_HEADER_MODE_MJPEG = 1   //!< MJPEG header mode
 } SceJpegArmEncoderHeaderMode;
+
+typedef enum SceJpegArmEncoderSplitEncodeFlags {
+	SCE_JPEGENCARM_SPLIT_ENCODE_WRITE_DATA  = 1, //!< Write JPEG data. Exclude this flag to initiate a split encode.
+	SCE_JPEGENCARM_SPLIT_ENCODE_PER_PIXEL   = 2, //!< Encode JPEG data per pixel. Default is per row of pixels.
+} SceJpegArmEncoderSplitDecodeFlags;
 
 /**
  * Get required size of context memory.
@@ -110,11 +115,71 @@ int sceJpegArmEncoderEnd(SceJpegArmEncoderContext context);
  * Execute a JPEG encode.
  *
  * @param[in] context  - An already initialized ::SceJpegArmEncoderContext.
- * @param[in] inBuffer - An 8 byte aligned memory block of color data.
+ * @param[in] inBuffer - An 8 byte aligned memory block of planar YCbCr color data.
  *
  * @return Encoded JPEG size on success, < 0 on error.
  */
 int sceJpegArmEncoderEncode(SceJpegArmEncoderContext context, const void *inBuffer);
+
+/**
+ * Execute a split JPEG encode.
+ *
+ * @param[in] context       - An already initialized ::SceJpegArmEncoderContext.
+ * @param[in] yBuffer       - An 8 byte aligned memory block of Y channel data.
+ * @param[in] cbBuffer      - An 8 byte aligned memory block of Cb channel data.
+ * @param[in] crBuffer      - An 8 byte aligned memory block of Cr channel data.
+ * @param[in] flags         - Combination of ::SceJpegArmEncoderSplitEncodeFlags.
+ * @param[in] outBuffer     - Output buffer. Will be used in place of any output buffer set by any other library functions.
+ * @param[in] outSize       - Output buffer size.
+ * @param[out] bytesWritten - Number of bytes written to the output buffer.
+ * 
+ * @par Example:
+ * @code
+ * EncodeJPEG(uint32_t *rgba, uint16_t width, height)
+ * {
+ *     SceUInt32 contextSize = sceJpegArmEncoderGetContextSize();
+ *     SceJpegArmEncoderContext context = malloc(contextSize);
+ *     
+ *     sceJpegArmEncoderInit(context, width, height, SCE_JPEGENCARM_PIXELFORMAT_YCBCR422, NULL, 0); // Output buffer is left unset
+ *     sceJpegArmEncoderSetCompressionRatio(context, 196);
+ *     sceJpegArmEncoderSetHeaderMode(context, SCE_JPEGENCARM_HEADER_MODE_JPEG);
+ *     
+ *     SceUInt32 bytesWritten = 0;
+ *     void *yBuffer, *cbBuffer, *crBuffer, *outBuffer;
+ *     outBuffer = malloc(0x1000, 1);
+ *     yBuffer = ALIGN(malloc(width + 7), 8);
+ *     cbBuffer = ALIGN(malloc((width / 2) + 7), 8);
+ *     crBuffer = ALIGN(malloc((width / 2) + 7), 8);
+ *     
+ *     // Initiate the split encode. The JPEG header is written
+ *     sceJpegArmEncoderSplitEncode(context, yBuffer, cbBuffer, crBuffer, 0, outBuffer, 0x1000, &bytesWritten);
+ *     WriteJPEGData(outBuffer, bytesWritten);
+ *     
+ *     for (int i = 0; i < height; i++)
+ *     {
+ *         // Acquire the next row of YUV data
+ *         ConvertRGBAScanlineToYUV(rgba, width, i, yBuffer, cbBuffer, crBuffer);
+ * 
+ *         // Encode the pixel data.
+ *         sceJpegArmEncoderSplitEncode(context, yBuffer, cbBuffer, crBuffer, SCE_JPEGENCARM_SPLIT_ENCODE_WRITE_DATA, outBuffer, 0x1000, &bytesWritten);
+ *         WriteJPEGData(outBuffer, bytesWritten);
+ *     }
+ *     
+ *     sceJpegArmEncoderEnd(context);
+ *     
+ *     // Free used buffers
+ *     free(outBuffer);
+ *     free(yBuffer);
+ *     free(cbBuffer);
+ *     free(crBuffer);
+ *     
+ *     FreeColorBuffers();
+ * }
+ * @endcode
+ *
+ * @return Encoded JPEG size or 0 on success, < 0 on error.
+ */
+int sceJpegArmEncoderSplitEncode(SceJpegArmEncoderContext context, const void *yBuffer, const void *cbBuffer, const void *crBuffer, SceUInt32 flags, void *outBuffer, SceSize outSIze, SceUInt32 *bytesWritten);
 
 /**
  * Set the encoder compression ratio.

@@ -16,3 +16,4 @@ modules:
           sceJpegArmEncoderSetHeaderMode: 0x6D24A669
           sceJpegArmEncoderSetOutputAddr: 0xDA0D0868
           sceJpegArmEncoderSetValidRegion: 0xD561E2E5
+          sceJpegArmEncoderSplitEncode: 0x4EE1BAED
