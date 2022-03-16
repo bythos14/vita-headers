@@ -98,6 +98,9 @@
  *
  *     \defgroup SceShutterSound Shutter Sounds Library
  *      Play camera related shutter sounds
+ *
+ *     \defgroup SceG729 G.729 Encoding and Decoding Library
+ *      Encode and decode G.729 bitstreams
  * \}
  *
  *
