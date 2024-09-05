@@ -152,6 +152,17 @@ typedef struct SceIoDirent {
 } SceIoDirent;
 VITASDK_BUILD_ASSERT_EQ(0x160, SceIoDirent);
 
+/** 
+ * Parameters for an asynchronous operation. This structure must
+ * persist for the duration of the operation
+ */
+typedef struct SceIoAsyncParam
+{
+	SceInt64 returnValue;
+	SceUInt32 data;        //!< User Data. Written back by Iofilemgr at completion
+	SceUInt32 reserved[2];
+	SceUInt32 unk;         //!< Set to 0 by Iofilemgr
+} SceIoAsyncParam;
 
 #ifdef __cplusplus
 }
